@@ -7,11 +7,11 @@ I don't expect any issues using Java-7 instead and with some small tweaks you sh
 
 Just include the library in your project and create an instance of the Cloud object using:
 
-Cloud c = new Cloud("Bearer youraccesstoken", true, false);
+        Cloud c = new Cloud("Bearer youraccesstoken", true, false);
 
 This will start a background task to receive events from the Particle Cloud. You will see them scolling by on your standard output.
 
-System.out.println(c.devices); // will printout all devices you own.
+        System.out.println(c.devices); // will printout all devices you own.
 
 Here is a code snippet to read two variables from my penquin-mighty Proton every 11 seconds.
 
