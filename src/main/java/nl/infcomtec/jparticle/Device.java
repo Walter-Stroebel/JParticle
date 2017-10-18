@@ -11,17 +11,55 @@ import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.net.ssl.HttpsURLConnection;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
 /**
  * Represents a Device.
+ *
  * @author walter
  */
 public class Device {
+
+    /**
+     * Obtain a device by directly calling the cloud.
+     *
+     * @param deviceId Device ID
+     * @param accessToken Your access token. Should start with Bearer.
+     * @return A Device.
+     * @throws Exception Probably if something did not work.
+     */
+    public static Device getDevice(String deviceId, String accessToken) throws Exception {
+        URL url = new URL("https://api.particle.io/v1/devices/" + deviceId);
+        URLConnection conn = url.openConnection();
+        conn.setRequestProperty("Authorization", accessToken);
+        conn.connect();
+        return new Device(new JSONObject(new JSONTokener(conn.getInputStream())));
+    }
+
+    /**
+     * Get all your devices.
+     *
+     * @param accessToken Your access token. Should start with Bearer.
+     * @return A list of Devices.
+     * @throws Exception Probably if something did not work.
+     */
+    public static ArrayList<Device> getDevices(String accessToken) throws Exception {
+        URL url = new URL("https://api.particle.io/v1/devices");
+        URLConnection conn = url.openConnection();
+        conn.setRequestProperty("Authorization", accessToken);
+        conn.connect();
+        JSONArray ja = new JSONArray(new JSONTokener(conn.getInputStream()));
+        ArrayList<Device> ret = new ArrayList<>();
+        for (int i = 0; i < ja.length(); i++) {
+            ret.add(new Device(ja.getJSONObject(i)));
+        }
+        return ret;
+    }
 
     public final boolean cellular;
     public final String id;
@@ -38,6 +76,7 @@ public class Device {
 
     /**
      * Called by the Cloud object to register a device.
+     *
      * @param o JSON as received from the cloud.
      * @throws Exception Obviously.
      */
@@ -57,58 +96,17 @@ public class Device {
     }
 
     /**
-     * Obtain a device by directly calling the cloud.
-     * @param deviceId Device ID
-     * @param accessToken Your access token. Should start with Bearer.
-     * @return A Device.
-     * @throws Exception Probably if something did not work. 
-     */
-    public static Device getDevice(String deviceId, String accessToken) throws Exception {
-        URL url = new URL("https://api.particle.io/v1/devices/" + deviceId);
-        URLConnection conn = url.openConnection();
-        conn.setRequestProperty("Authorization", accessToken);
-        conn.connect();
-        return new Device(new JSONObject(new JSONTokener(conn.getInputStream())));
-    }
-
-    /** Get all your devices.
-     * 
-     * @param accessToken
-     * @param accessToken Your access token. Should start with Bearer.
-     * @return A list of Devices.
-     * @throws Exception Probably if something did not work. 
-     */
-    public static ArrayList<Device> getDevices(String accessToken) throws Exception {
-        URL url = new URL("https://api.particle.io/v1/devices");
-        URLConnection conn = url.openConnection();
-        conn.setRequestProperty("Authorization", accessToken);
-        conn.connect();
-        JSONArray ja = new JSONArray(new JSONTokener(conn.getInputStream()));
-        ArrayList<Device> ret = new ArrayList<>();
-        for (int i = 0; i < ja.length(); i++) {
-            ret.add(new Device(ja.getJSONObject(i)));
-        }
-        return ret;
-    }
-
-    /**
      * Request a boolean variable.
+     *
      * @param name Name of the variable.
      * @param accessToken Your access token. Should start with Bearer.
      * @return The boolean value.
-     * @throws Exception On errors.
      */
-    public Boolean readBoolean(String name, String accessToken) throws Exception {
-        URL url = new URL("https://api.particle.io/v1/devices/" + id + "/" + name);
-        HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
-        conn.setRequestProperty("Authorization", accessToken);
-        conn.setDoOutput(false);
-        int resp = conn.getResponseCode();
-        if (resp == 200) {
-            JSONObject jo = new JSONObject(new JSONTokener(conn.getInputStream()));
-            updateFields(jo);
-            return jo.getBoolean("result");
+    public Boolean readBoolean(String name, String accessToken) {
+        try {
+            return (Boolean) readAny(name, accessToken);
+        } catch (Exception ex) {
+            Logger.getLogger(Device.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
@@ -146,11 +144,12 @@ public class Device {
                 + "\n}";
     }
 
-    /** Get a fresh copy of this device.
-     * 
+    /**
+     * Get a fresh copy of this device.
+     *
      * @param accessToken Your access token.
      * @return A new Device with the most recent values for the fields.
-     * @throws Exception 
+     * @throws Exception
      */
     public Device refresh(String accessToken) throws Exception {
         return getDevice(id, accessToken);
@@ -191,56 +190,61 @@ public class Device {
 
     /**
      * Request an integer variable.
+     *
      * @param name Name of the variable.
      * @param accessToken Your access token. Should start with Bearer.
      * @return The integer value.
-     * @throws Exception On errors.
      */
-    public Integer readInt(String name, String accessToken) throws Exception {
-        URL url = new URL("https://api.particle.io/v1/devices/" + id + "/" + name);
-        HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
-        conn.setRequestProperty("Authorization", accessToken);
-        conn.setDoOutput(false);
-        int resp = conn.getResponseCode();
-        if (resp == 200) {
-            JSONObject jo = new JSONObject(new JSONTokener(conn.getInputStream()));
-            updateFields(jo);
-            return jo.getInt("result");
+    public Integer readInt(String name, String accessToken) {
+        try {
+            return (Integer) readAny(name, accessToken);
+        } catch (Exception ex) {
+            Logger.getLogger(Device.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
 
     /**
      * Request a String variable.
+     *
      * @param name Name of the variable.
      * @param accessToken Your access token. Should start with Bearer.
      * @return The String value.
-     * @throws Exception On errors.
      */
-    public String readString(String name, String accessToken) throws Exception {
-        URL url = new URL("https://api.particle.io/v1/devices/" + id + "/" + name);
-        HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
-        conn.setRequestProperty("Authorization", accessToken);
-        conn.setDoOutput(false);
-        int resp = conn.getResponseCode();
-        if (resp == 200) {
-            JSONObject jo = new JSONObject(new JSONTokener(conn.getInputStream()));
-            updateFields(jo);
-            return jo.getString("result");
+    public String readString(String name, String accessToken) {
+        try {
+            return "" + readAny(name, accessToken);
+        } catch (Exception ex) {
+            Logger.getLogger(Device.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
 
     /**
      * Request a double variable.
+     *
      * @param name Name of the variable.
      * @param accessToken Your access token. Should start with Bearer.
      * @return The double value.
+     */
+    public Double readDouble(String name, String accessToken) {
+        try {
+            return (Double) readAny(name, accessToken);
+        } catch (Exception ex) {
+            Logger.getLogger(Device.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
+    }
+
+    /**
+     * Request a untyped variable.
+     *
+     * @param name Name of the variable.
+     * @param accessToken Your access token. Should start with Bearer.
+     * @return The value, if any.
      * @throws Exception On errors.
      */
-    public double readDouble(String name, String accessToken) throws Exception {
+    public Object readAny(String name, String accessToken) throws Exception {
         URL url = new URL("https://api.particle.io/v1/devices/" + id + "/" + name);
         HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
@@ -250,9 +254,9 @@ public class Device {
         if (resp == 200) {
             JSONObject jo = new JSONObject(new JSONTokener(conn.getInputStream()));
             updateFields(jo);
-            return jo.getDouble("result");
+            return jo.opt("result");
         }
-        return Double.NaN;
+        return null;
     }
 
 }
