@@ -240,7 +240,7 @@ public class Cloud {
      * @param varName Name of the variable.
      * @return Value of the variable or null on errors.
      */
-    public int getInt(String device, String varName) {
+    public Integer getInt(String device, String varName) {
         try {
             return devices.get(device).readInt(varName, accessToken);
         } catch (Exception ex) {
