@@ -28,14 +28,14 @@ public interface DeviceEvent {
     public UUID uuid();
 
     /**
-     * If not null, we want events for this device Id.
+     * If not null, we only want events for this device Id.
      *
      * @return null or deviceId to match.
      */
     public String forDeviceId();
 
     /**
-     * If not null, we want events for this device name.
+     * If not null, we only want events for this device name.
      *
      * @return null or device name to match.
      */
