@@ -73,6 +73,8 @@ public class Device {
     public String name;
     public final InetAddress lastIPAddress;
     public final JSONObject variables;
+    public final String systemFirmwareVersion;
+    public final String cc3000PatchVersion;
 
     /**
      * Called by the Cloud object to register a device.
@@ -93,6 +95,8 @@ public class Device {
         name = o.getString("name");
         lastIPAddress = InetAddress.getByName(o.getString("last_ip_address"));
         variables = o.optJSONObject("variables");
+        systemFirmwareVersion = o.optString("system_firmware_version");
+        cc3000PatchVersion = o.optString("cc3000_patch_version");
     }
 
     /**
