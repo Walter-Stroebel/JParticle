@@ -21,6 +21,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.HttpsURLConnection;
 
 /**
@@ -97,9 +98,13 @@ public class Cloud {
      * devices -- not recommended.
      */
     public Cloud(String accessToken, boolean readMine, boolean readAll) {
-        this.accessToken = accessToken;
+        if (accessToken.startsWith("Bearer ")) {
+            this.accessToken = accessToken;
+        } else {
+            this.accessToken = "Bearer " + accessToken;
+        }
         try {
-            for (Device d : Device.getDevices(accessToken)) {
+            for (Device d : Device.getDevices(this.accessToken)) {
                 devices.put(d.name, d);
             }
         } catch (Exception ex) {
@@ -117,8 +122,8 @@ public class Cloud {
     /**
      * Call a function on a device.
      *
-     * @param device Device name.
-     * @param funcName Function name.
+     * @param device Device eventName.
+     * @param funcName Function eventName.
      * @param funcArgs Argument(s) for the function call.
      * @return
      */
@@ -134,8 +139,8 @@ public class Cloud {
     /**
      * Async call to a function on a device.
      *
-     * @param device Device name.
-     * @param funcName Function name.
+     * @param device Device eventName.
+     * @param funcName Function eventName.
      * @param funcArgs Argument(s) for the function call.
      * @return A Future to obtain the value from.
      */
@@ -153,8 +158,8 @@ public class Cloud {
      * Async call to a function on a device. This version ignores the function
      * result.
      *
-     * @param device Device name.
-     * @param funcName Function name.
+     * @param device Device eventName.
+     * @param funcName Function eventName.
      * @param funcArgs Argument(s) for the function call.
      */
     public void callTask(final String device, final String funcName, final String funcArgs) {
@@ -170,7 +175,7 @@ public class Cloud {
     /**
      * Get a value for a variable from a device.
      *
-     * @param device Device name.
+     * @param device Device eventName.
      * @param varName Name of the variable.
      * @return Value of the variable or null on errors.
      */
@@ -186,7 +191,7 @@ public class Cloud {
     /**
      * Async version to get a value for a variable from a device.
      *
-     * @param device Device name.
+     * @param device Device eventName.
      * @param varName Name of the variable.
      * @return Value of the variable or null on errors.
      */
@@ -203,7 +208,7 @@ public class Cloud {
     /**
      * Get a value for a variable from a device.
      *
-     * @param device Device name.
+     * @param device Device eventName.
      * @param varName Name of the variable.
      * @return Value of the variable or null on errors.
      */
@@ -219,7 +224,7 @@ public class Cloud {
     /**
      * Async version to get a value for a variable from a device.
      *
-     * @param device Device name.
+     * @param device Device eventName.
      * @param varName Name of the variable.
      * @return Value of the variable or null on errors.
      */
@@ -236,7 +241,7 @@ public class Cloud {
     /**
      * Get a value for a variable from a device.
      *
-     * @param device Device name.
+     * @param device Device eventName.
      * @param varName Name of the variable.
      * @return Value of the variable or null on errors.
      */
@@ -252,7 +257,7 @@ public class Cloud {
     /**
      * Async version to get a value for a variable from a device.
      *
-     * @param device Device name.
+     * @param device Device eventName.
      * @param varName Name of the variable.
      * @return Value of the variable or null on errors.
      */
@@ -269,7 +274,7 @@ public class Cloud {
     /**
      * Get a value for a variable from a device.
      *
-     * @param device Device name.
+     * @param device Device eventName.
      * @param varName Name of the variable.
      * @return Value of the variable or null on errors.
      */
@@ -285,7 +290,7 @@ public class Cloud {
     /**
      * Async version to get a value for a variable from a device.
      *
-     * @param device Device name.
+     * @param device Device eventName.
      * @param varName Name of the variable.
      * @return Value of the variable or null on errors.
      */
@@ -443,6 +448,7 @@ public class Cloud {
     private class PublishedReader implements Runnable {
 
         private final boolean mine;
+        public AtomicReference<Event> unclaimedEvent = new AtomicReference<>();
 
         public PublishedReader(boolean mine) {
             this.mine = mine;
@@ -450,6 +456,7 @@ public class Cloud {
 
         @Override
         public void run() {
+            Thread.currentThread().setName("PublishedReader:" + mine);
             try {
                 URL url = new URL(mine ? "https://api.particle.io/v1/devices/events" : "https://api.particle.io/v1/events");
                 HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
@@ -460,14 +467,16 @@ public class Cloud {
                     String s;
                     while (null != (s = bfr.readLine())) {
                         if (s.startsWith("event: ")) {
-                            String event = s.substring(7);
+                            String eventName = s.substring(7);
                             String data = bfr.readLine();
+                            //System.out.println(eventName + " " + data);
                             if (data.startsWith("data: ")) {
                                 synchronized (callBacks) {
                                     AnyJSON aj = new AnyJSON(data.substring(6));
-                                    final Event e = new Event(event, aj.getObject());
+                                    final Event e = new Event(devices, eventName, aj.getObject());
+                                    //System.out.println(Thread.currentThread().getName()+" "+e);
                                     for (final DeviceEvent cb : callBacks.values()) {
-                                        if (null != cb.forDeviceName() && cb.forDeviceName().equals(e.name)) {
+                                        if (null != cb.forDeviceName() && cb.forDeviceName().equals(e.deviceName)) {
                                             pool.submit(new Runnable() {
                                                 @Override
                                                 public void run() {

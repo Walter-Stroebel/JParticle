@@ -5,6 +5,7 @@
 package nl.infcomtec.jparticle;
 
 import java.util.Date;
+import java.util.TreeMap;
 import org.json.JSONObject;
 
 /**
@@ -13,15 +14,22 @@ import org.json.JSONObject;
  */
 public class Event {
 
-    final public String name;
+    public String deviceName="?";
+    final public String eventName;
     final public String coreId;
     final public String data;
     final public Date publishedAt;
     final public long ttl;
 
-    public Event(String name, JSONObject jo) {
-        this.name = name;
+    public Event(final TreeMap<String, Device> devices, final String eventName, final JSONObject jo) {
+        this.eventName = eventName;
         this.coreId = jo.getString("coreid");
+        for (Device d : devices.values()) {
+            if (d.id.equals(coreId)) {
+                this.deviceName = d.name;
+                break;
+            }
+        }
         this.data = jo.getString("data");
         this.publishedAt = Cloud.parseDateTime(jo.getString("published_at"));
         long _ttl = jo.getLong("ttl") * 1000L;
@@ -34,7 +42,7 @@ public class Event {
 
     @Override
     public String toString() {
-        return "\nEvent{" + "name=" + name + ", coreId=" + coreId + ", data=" + data + ", publishedAt=" + publishedAt + ", ttl=" + ttl + ", expires=" + expires() + '}';
+        return "Event{" + "deviceName=" + deviceName + ", eventName=" + eventName + ", coreId=" + coreId + ", data=" + data + ", publishedAt=" + publishedAt + ", ttl=" + ttl + '}';
     }
 
 }
