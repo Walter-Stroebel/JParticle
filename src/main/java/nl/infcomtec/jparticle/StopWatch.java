@@ -76,6 +76,8 @@ public class StopWatch {
     /**
      * Return elapsed time in a human-sensible form.
      *
+     * @param nanos Number of nanoseconds.
+     * @return Human-readable presentation.
      */
     public static String elaspedFromNanos(long nanos) {
         char sign = (nanos < 0) ? '-' : ' ';
