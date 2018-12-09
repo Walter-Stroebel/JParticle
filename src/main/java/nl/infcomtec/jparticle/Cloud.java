@@ -125,7 +125,7 @@ public class Cloud {
      * @param device Device eventName.
      * @param funcName Function eventName.
      * @param funcArgs Argument(s) for the function call.
-     * @return
+     * @return The value from the function on the device.
      */
     public int call(String device, String funcName, String funcArgs) {
         try {
@@ -477,26 +477,32 @@ public class Cloud {
                                     //System.out.println(Thread.currentThread().getName()+" "+e);
                                     for (final DeviceEvent cb : callBacks.values()) {
                                         if (null != cb.forDeviceName() && cb.forDeviceName().equals(e.deviceName)) {
-                                            pool.submit(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    cb.event(e);
-                                                }
-                                            });
+                                            if (null == cb.forEventName() || e.eventName.equals(cb.forEventName())) {
+                                                pool.submit(new Runnable() {
+                                                    @Override
+                                                    public void run() {
+                                                        cb.event(e);
+                                                    }
+                                                });
+                                            }
                                         } else if (null != cb.forDeviceId() && cb.forDeviceId().equals(e.coreId)) {
-                                            pool.submit(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    cb.event(e);
-                                                }
-                                            });
+                                            if (null == cb.forEventName() || e.eventName.equals(cb.forEventName())) {
+                                                pool.submit(new Runnable() {
+                                                    @Override
+                                                    public void run() {
+                                                        cb.event(e);
+                                                    }
+                                                });
+                                            }
                                         } else if (null == cb.forDeviceName() && null == cb.forDeviceId()) {
-                                            pool.submit(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    cb.event(e);
-                                                }
-                                            });
+                                            if (null == cb.forEventName() || e.eventName.equals(cb.forEventName())) {
+                                                pool.submit(new Runnable() {
+                                                    @Override
+                                                    public void run() {
+                                                        cb.event(e);
+                                                    }
+                                                });
+                                            }
                                         }
                                     }
                                 }
