@@ -9,7 +9,7 @@ Just include the library in your project and create an instance of the Cloud obj
 
         Cloud c = new Cloud("Bearer youraccesstoken", true, false);
 
-This will start a background task to receive events from the Particle Cloud. You will see them scolling by on your standard output.
+This will start a background task to receive events from the Particle Cloud.
 
         System.out.println(c.devices); // will printout all devices you own.
 
