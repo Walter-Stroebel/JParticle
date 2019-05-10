@@ -6,7 +6,10 @@ package nl.infcomtec.jparticle;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.text.DateFormat;
@@ -457,52 +460,69 @@ public class Cloud {
         @Override
         public void run() {
             Thread.currentThread().setName("PublishedReader:" + mine);
-            try {
-                URL url = new URL(mine ? "https://api.particle.io/v1/devices/events" : "https://api.particle.io/v1/events");
-                HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setRequestProperty("Authorization", Cloud.this.accessToken);
-                conn.setDoOutput(false);
-                try (BufferedReader bfr = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-                    String s;
-                    while (null != (s = bfr.readLine())) {
-                        if (s.startsWith("event: ")) {
-                            String eventName = s.substring(7);
-                            String data = bfr.readLine();
-                            //System.out.println(eventName + " " + data);
-                            if (data.startsWith("data: ")) {
-                                synchronized (callBacks) {
-                                    AnyJSON aj = new AnyJSON(data.substring(6));
-                                    final Event e = new Event(devices, eventName, aj.getObject());
-                                    //System.out.println(Thread.currentThread().getName()+" "+e);
-                                    for (final DeviceEvent cb : callBacks.values()) {
-                                        if (null != cb.forDeviceName() && cb.forDeviceName().equals(e.deviceName)) {
-                                            if (null == cb.forEventName() || e.eventName.equals(cb.forEventName())) {
-                                                pool.submit(new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        cb.event(e);
-                                                    }
-                                                });
-                                            }
-                                        } else if (null != cb.forDeviceId() && cb.forDeviceId().equals(e.coreId)) {
-                                            if (null == cb.forEventName() || e.eventName.equals(cb.forEventName())) {
-                                                pool.submit(new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        cb.event(e);
-                                                    }
-                                                });
-                                            }
-                                        } else if (null == cb.forDeviceName() && null == cb.forDeviceId()) {
-                                            if (null == cb.forEventName() || e.eventName.equals(cb.forEventName())) {
-                                                pool.submit(new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        cb.event(e);
-                                                    }
-                                                });
-                                            }
+            while (true) {
+                try {
+                    // Normally the below should keep runnning but of course
+                    // we CAN have an interruption in our network service.
+                    // If so we briefly wait and start again.
+                    doIO();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException done) {
+                        // this probably means we should really stop
+                        System.exit(4); // EINTR 4 Interrupted system call 
+                    }
+                }
+            }
+        }
+
+        private void doIO() throws IOException, ProtocolException, MalformedURLException {
+            URL url = new URL(mine ? "https://api.particle.io/v1/devices/events" : "https://api.particle.io/v1/events");
+            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Authorization", Cloud.this.accessToken);
+            conn.setDoOutput(false);
+            try (BufferedReader bfr = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                String s;
+                while (null != (s = bfr.readLine())) {
+                    if (s.startsWith("event: ")) {
+                        String eventName = s.substring(7);
+                        String data = bfr.readLine();
+                        //System.out.println(eventName + " " + data);
+                        if (data.startsWith("data: ")) {
+                            synchronized (callBacks) {
+                                AnyJSON aj = new AnyJSON(data.substring(6));
+                                final Event e = new Event(devices, eventName, aj.getObject());
+                                //System.out.println(Thread.currentThread().getName()+" "+e);
+                                for (final DeviceEvent cb : callBacks.values()) {
+                                    if (null != cb.forDeviceName() && cb.forDeviceName().equals(e.deviceName)) {
+                                        if (null == cb.forEventName() || e.eventName.equals(cb.forEventName())) {
+                                            pool.submit(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    cb.event(e);
+                                                }
+                                            });
+                                        }
+                                    } else if (null != cb.forDeviceId() && cb.forDeviceId().equals(e.coreId)) {
+                                        if (null == cb.forEventName() || e.eventName.equals(cb.forEventName())) {
+                                            pool.submit(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    cb.event(e);
+                                                }
+                                            });
+                                        }
+                                    } else if (null == cb.forDeviceName() && null == cb.forDeviceId()) {
+                                        if (null == cb.forEventName() || e.eventName.equals(cb.forEventName())) {
+                                            pool.submit(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    cb.event(e);
+                                                }
+                                            });
                                         }
                                     }
                                 }
@@ -510,8 +530,6 @@ public class Cloud {
                         }
                     }
                 }
-            } catch (Exception ex) {
-                ex.printStackTrace();
             }
         }
     }
